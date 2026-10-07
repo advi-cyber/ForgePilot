@@ -58,7 +58,8 @@ export class GroqProvider extends LLMProvider {
 
         const payload = {
             model: this.model,
-            messages: groqMessages
+            messages: groqMessages,
+            max_tokens: 800
         };
 
         return new Promise((resolve, reject) => {

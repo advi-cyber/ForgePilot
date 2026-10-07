@@ -80,7 +80,7 @@ export class ForgePilotAgent {
         
         try {
             if (this.manifest.testFramework !== 'None') {
-                const result = await TestRunner.runBaseline(this.workspaceRoot, this.manifest.testFramework);
+                const result = await TestRunner.runBaseline(this.workspaceRoot, this.manifest.testFramework, (msg, level) => this.log(msg, level));
                 if (result.passed) {
                     this.log(`✓ TEST_COMPLETED: ${result.passedTests} passed.`, 'success');
                 } else {
@@ -133,7 +133,11 @@ Provide a JSON response with:
             ]);
             
             const parsed = this.parseJsonOutput(response);
-            if (!parsed) throw new Error("LLM returned invalid JSON plan.");
+            if (!parsed || !parsed.plan || !parsed.fileChanges || !Array.isArray(parsed.fileChanges)) {
+                this.log(`! LLM returned invalid JSON or missing required fields.`, 'error');
+                this.log(`Raw response:\n${response.substring(0, 1000)}...`, 'error');
+                throw new Error("LLM returned invalid JSON plan.");
+            }
             
             this.log(`✓ ROOT_CAUSE_FOUND: ${parsed.rootCause}`, 'success');
             this.log(`✓ BLAST_RADIUS_CALCULATED: ${parsed.blastRadius?.join(', ') || 'unknown'}`, 'info');
@@ -150,7 +154,7 @@ Provide a JSON response with:
             this.updateStatus('VERIFYING');
             if (this.manifest.testFramework !== 'None') {
                 this.log('→ RUNNING REGRESSION SUITE...', 'info');
-                let finalResult = await TestRunner.runBaseline(this.workspaceRoot, this.manifest.testFramework);
+                let finalResult = await TestRunner.runBaseline(this.workspaceRoot, this.manifest.testFramework, (msg, level) => this.log(msg, level));
                 let attempts = 0;
                 
                 while (!finalResult.passed && attempts < 3) {
@@ -176,7 +180,7 @@ Provide a JSON response with updated fileChanges to fix these tests:
                             const fullPath = path.join(this.workspaceRoot, change.path);
                             fs.writeFileSync(fullPath, change.content);
                         }
-                        finalResult = await TestRunner.runBaseline(this.workspaceRoot, this.manifest.testFramework);
+                        finalResult = await TestRunner.runBaseline(this.workspaceRoot, this.manifest.testFramework, (msg, level) => this.log(msg, level));
                     } else {
                         break;
                     }
@@ -238,7 +242,11 @@ Provide a JSON response with:
             ]);
             
             const parsed = this.parseJsonOutput(response);
-            if (!parsed) throw new Error("LLM returned invalid JSON plan.");
+            if (!parsed || !parsed.plan || !parsed.fileChanges || !Array.isArray(parsed.fileChanges)) {
+                this.log(`! LLM returned invalid JSON or missing required fields.`, 'error');
+                this.log(`Raw response:\n${response.substring(0, 1000)}...`, 'error');
+                throw new Error("LLM returned invalid JSON plan.");
+            }
             
             this.log(`✓ ENHANCEMENT_ANALYSIS: ${parsed.analysis}`, 'success');
             this.log(`✓ BLAST_RADIUS: ${parsed.blastRadius?.join(', ') || 'unknown'}`, 'info');
@@ -255,7 +263,7 @@ Provide a JSON response with:
             this.updateStatus('VERIFYING');
             if (this.manifest.testFramework !== 'None') {
                 this.log('→ RUNNING REGRESSION SUITE...', 'info');
-                let finalResult = await TestRunner.runBaseline(this.workspaceRoot, this.manifest.testFramework);
+                let finalResult = await TestRunner.runBaseline(this.workspaceRoot, this.manifest.testFramework, (msg, level) => this.log(msg, level));
                 
                 if (finalResult.passed) {
                     this.log(`✓ VERIFICATION_COMPLETED: Regression PASS.`, 'success');
@@ -277,12 +285,29 @@ Provide a JSON response with:
     }
 
     private parseJsonOutput(text: string): any {
+        // Try parsing the raw text first
         try {
-            const jsonMatch = text.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-                return JSON.parse(jsonMatch[0]);
+            return JSON.parse(text);
+        } catch(e) {}
+        
+        // Try to extract from a markdown code block
+        try {
+            const jsonBlockMatch = text.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+            if (jsonBlockMatch) {
+                return JSON.parse(jsonBlockMatch[1]);
             }
         } catch(e) {}
+
+        // Fallback: extract substring between the first { and last }
+        try {
+            const firstBrace = text.indexOf('{');
+            const lastBrace = text.lastIndexOf('}');
+            if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+                const jsonStr = text.substring(firstBrace, lastBrace + 1);
+                return JSON.parse(jsonStr);
+            }
+        } catch(e) {}
+        
         return null;
     }
 
