@@ -4,10 +4,11 @@ ForgePilot is an AI software engineer embedded directly inside VS Code. It autom
 
 ## Features
 
-- **Context-Aware Repository Analysis**: ForgePilot inspects your workspace to detect languages, frameworks, and test runners (e.g., Python & pytest).
-- **Intelligent Bug Fixing**: Identifies root causes and implements the smallest appropriate correct change.
-- **Automated Regression Testing**: Automatically runs baseline tests, executes your test suite after modifications, and ensures tests pass.
-- **Safety First**: Executes tests in your local environment, ensuring that code changes are verified.
+- **VS Code Native UI**: A sleek, premium, developer-focused dashboard embedded directly inside VS Code's sidebar. Information dense, responsive, and beautifully integrated with dark/light themes.
+- **Context-Aware Analysis**: ForgePilot inspects your workspace to detect languages, frameworks, and test runners. It features robust support for Python virtual environments (e.g., `.venv` resolving) out of the box.
+- **Intelligent Bug Fixing**: Uses the GroqCloud API with the Qwen model to identify root causes and implement the smallest appropriate correct change. Includes robust, safe JSON extraction preventing corrupted generations.
+- **Automated Regression Testing**: Automatically runs baseline tests, executes your test suite after modifications, and ensures tests pass before reporting completion.
+- **Safety First**: Executes tests in your local environment, ensuring that code changes are verified. Prevents malformed LLM outputs from applying unsafe partial file changes.
 
 ## Quick Start (VS Code Extension)
 
@@ -80,9 +81,10 @@ This autonomously performs the following:
 
 ForgePilot operates via distinct phases:
 - `RepositoryAnalyzer`: Inspects the workspace and extracts `RepoInfo`.
-- `TestRunner`: Executes testing frameworks and parses pass/fail counts.
-- `LLMProvider`: Handles interaction with LLM models using GroqCloud API.
-- `ForgePilotAgent`: Orchestrates the engineering lifecycle (Analysis -> Baseline -> Plan -> Implement -> Test -> Report).
+- `TestRunner`: Smartly executes testing frameworks, seamlessly resolving local virtual environments.
+- `LLMProvider`: Robustly handles interactions and rate-limit constraints with LLM models using GroqCloud API.
+- `ForgePilotAgent`: Orchestrates the engineering lifecycle, rigorously parsing and validating LLM-generated execution plans.
+- `WebviewManager`: Manages the rich, native UI, cleanly segregating interface logic from backend execution.
 
 ## Known Limitations
 
